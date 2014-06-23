@@ -1,6 +1,8 @@
 package Wrangler::Wx::Sidebar;
 
 use strict;
+use warnings;
+
 use base qw(Wx::TreeCtrl);
 
 use Wx qw(:treectrl wxDefaultPosition wxDefaultSize);
@@ -136,9 +138,9 @@ sub OnRightClick {
 		my $item = Wx::MenuItem->new($menu, -1, "Rename");
 		$menu->Append($item);
 		$menu->Enable($item->GetId(),0);
-		my $item = Wx::MenuItem->new($menu, -1, "Delete");
-		$menu->Append($item);
-		$menu->Enable($item->GetId(),0);
+		my $item_del = Wx::MenuItem->new($menu, -1, "Delete");
+		$menu->Append($item_del);
+		$menu->Enable($item_del->GetId(),0);
 		$menu->AppendSeparator();
 	}
 
@@ -154,8 +156,15 @@ sub gtkbookmarks {
 
 	## for now, simple checks, later we might add the dependency on File::HomeDir
 	return unless $ENV{HOME};
-	my $path = File::Spec->catfile($ENV{HOME}, '.gtk-bookmarks');
-	return unless $parent->{wrangler}->{fs}->test('e', $path);
+
+	my $path = File::Spec->catfile( $ENV{HOME}, '.config', 'gtk-3.0', 'bookmarks');
+	if( $parent->{wrangler}->{fs}->test('e', $path) ){
+		Wrangler::debug('Wx::Sidebar: found gtk-bookmarks file in gtk3 location');
+	}else{
+		$path = File::Spec->catfile($ENV{HOME}, '.gtk-bookmarks');
+		return unless $parent->{wrangler}->{fs}->test('e', $path);
+		Wrangler::debug('Wx::Sidebar: found gtk-bookmarks in legacy location');
+	}
 
 	my @bookmarks;
 	open(my $fh, '<', $path) or die "Can't open gtk-bookmarks: $path: $!";

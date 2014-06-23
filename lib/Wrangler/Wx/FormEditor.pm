@@ -7,7 +7,7 @@ use base 'Wx::Panel';
 use Wx ':everything';
 use Wx::Event qw(EVT_BUTTON EVT_TEXT EVT_CHAR EVT_RIGHT_UP EVT_MENU EVT_COMBOBOX EVT_TEXT_ENTER);
 use JSON::XS ();
-use File::Slurp ();
+use Path::Tiny;
 
 sub new {
 	my $class  = shift;
@@ -377,7 +377,7 @@ sub SaveFieldLayout {
 	my $json = eval { JSON::XS->new->utf8->pretty->encode( { $editor_name => $editor->{editors}->{ $editor_name } } ) };
 	Wrangler::debug("Wrangler::Wx::FormEditor::SaveFieldLayout: error encoding fields: $@") if $@;
 
-	File::Slurp::write_file($path, {binmode => ':utf8'}, \$json) or Wrangler::debug("Wrangler::Wx::FormEditor::SaveFieldLayout: error writing layout file: $path: $!")
+	path($path)->spew_utf8(\$json) or Wrangler::debug("Wrangler::Wx::FormEditor::SaveFieldLayout: error writing layout file: $path: $!")
 }
 
 sub LoadFieldLayout {
@@ -392,7 +392,7 @@ sub LoadFieldLayout {
 	my $path = $file_dialog->GetPath;
 	$file_dialog->Destroy;
 
-	my $json = File::Slurp::read_file($path, { binmode => ':utf8' }) or Wrangler::debug("Wrangler::Wx::FormEditor::LoadFieldLayout: error reading layout file: $!");
+	my $json = path($path)->slurp_utf8 or Wrangler::debug("Wrangler::Wx::FormEditor::LoadFieldLayout: error reading layout file: $!");
 	my $ref = eval { JSON::XS::decode_json( $json ) };
 	Wrangler::debug("Wrangler::Wx::FormEditor::LoadFieldLayout: error decoding layout file: $@") if $@;
 

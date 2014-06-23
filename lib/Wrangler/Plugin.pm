@@ -73,4 +73,7 @@ information and licensing / usage terms.
 
 =cut
 
+use strict;
+use warnings;
+
 1;

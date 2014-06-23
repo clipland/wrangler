@@ -8,7 +8,7 @@ use JSON::XS ();
 use File::HomeDir;
 use Data::Dumper ();
 use Digest::MD5 ();
-use File::Slurp ();
+use Path::Tiny;
 
 our %default_settings = (
 	'ui.main.width'				=> 1000,
@@ -157,7 +157,7 @@ sub read {
 
 	if($path && -f $path){
 		Wrangler::debug('Wrangler::Config::read: reading settings file:'. $path);
-		my $json = File::Slurp::read_file($path, { binmode => ':utf8' }) or Wrangler::debug("Wrangler::Config::read: error reading config file: $!");
+		my $json = path($path)->slurp_utf8 or Wrangler::debug("Wrangler::Config::read: error reading config file: $!");
 		my $ref = eval { JSON::XS::decode_json( $json ) };
 		Wrangler::debug("Wrangler::Config::read: error decoding config file: $@") if $@;
 		%settings = %$ref;
@@ -217,7 +217,7 @@ sub write {
 		my $json = eval { JSON::XS->new->utf8->pretty->encode( \%settings ) };
 		Wrangler::debug("Wrangler::Config::write: error encoding config file: $@") if $@;
 
-		File::Slurp::write_file($path, {binmode => ':utf8'}, \$json) or Wrangler::debug("Wrangler::Config::write: error writing config file: $path: $!")
+		path($path)->spew_utf8($json) or Wrangler::debug("Wrangler::Config::write: error writing config file: $path: $!")
 	}
 }
 

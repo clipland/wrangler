@@ -42,6 +42,9 @@ information and licensing / usage terms.
 
 =cut
 
+use strict;
+use warnings;
+
 our %table;
 our %owner;
 our $frozen;

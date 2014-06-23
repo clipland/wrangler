@@ -1,15 +1,11 @@
 package Wrangler::Wx::Dialog::KeywordingTool;
 
 use strict;
+use warnings;
+
 use Wx qw/:id :misc :sizer :dialog :textctrl :notebook :treectrl :listctrl :window :radiobutton wxCLOSE_BOX WXK_DELETE/;
 use Wx::Event qw(EVT_RADIOBUTTON EVT_BUTTON EVT_CHECKBOX EVT_CHAR);
-use Data::Dumper;
-use XML::ASX;
-use XML::Simple;
-use Smil;
-use Encode;
-use File::Spec;
-use URI;
+
 use base 'Wx::Dialog';
 
 sub new {

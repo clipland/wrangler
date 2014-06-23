@@ -1,5 +1,15 @@
 Revision history for Wrangler
 
+2.14	2014-06-23
+	- Previewer: fix 'no thumb' rendering for newer Wx
+	- Sidebar: look for gtk bookmarks file in gtk3 location
+	- FileSystem::Linux: decode strings to perl-internal
+	- File::Slurp replaced with Path:Tiny, as per RT#95678
+	- KeywordingTool: nonsensical dependencies removed
+	- Previewer: lazy helper probing for libav-tools
+	- debian control now lists libav-tools as dependency
+	- tests: adapted to gvfs-trash behaviour change
+
 2.13	2014-05-12
 	- currently unused dependencies XML::Simple and
 	  Crypt::SSLeay dropped from Makefile.PL

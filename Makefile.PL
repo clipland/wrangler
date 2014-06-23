@@ -24,10 +24,12 @@ WriteMakefile(
 # unused in 2.x	'Data::Uniqid'		=> 0,		# in README: This library is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
 		'Digest::MD5'		=> 0,		# The Perl 5 License (Artistic 1 & GPL 1)
 # unused in 2.x	'Digest::MD5::File'	=> 0,		# This library is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
+		'Encode'		=> 0,		# The Perl 5 License (Artistic 1 & GPL 1)
 		'File::Spec'		=> 0,		# PathTools
 		'File::ExtAttr'		=> 0,		# The Perl 5 License (Artistic 1 & GPL 1)
 		'File::HomeDir'		=> 0,		# The Perl 5 License (Artistic 1 & GPL 1)
-		'File::Slurp'		=> 0,		# The Perl 5 License (Artistic 1 & GPL 1)
+# replaced by	'File::Slurp'		=> 0,		# The Perl 5 License (Artistic 1 & GPL 1)
+		'Path::Tiny'		=> 0.054,	# The Apache License, Version 2.0, January 2004
 		'Image::ExifTool'	=> 0,		# The Perl 5 License (Artistic 1 & GPL 1)
 		'Image::MetaData::JPEG'	=> 0,		# GPL v2
 		'IO::Scalar'		=> 0,		# IO-stringy: in COPYING: This program is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
@@ -59,11 +61,12 @@ WriteMakefile(
 
 	},
 	BUILD_REQUIRES	=> {
-
+		'Test::Deep'		=> 0,		# in POD: same as Perl / Artistic
 	},
 	TEST_REQUIRES	=> {
 		'Test::Simple'		=> 0.44,	# The Perl 5 License (Artistic 1 & GPL 1)
 		'File::Temp'		=> 0,		# The Perl 5 License (Artistic 1 & GPL 1)
+		'Test::Deep'		=> 0,		# in POD: same as Perl / Artistic
 	},
 	EXE_FILES	=> [
 		'bin/wrangler'
@@ -132,7 +135,7 @@ sub may_send_version_information {
 
 	my %values = (
 			'dist'    => 'Wrangler',
-			'version' => '2.13',
+			'version' => '2.14',
 			'osname'  => $Config::Config{osname},
 			'archname'=> $Config::Config{archname},
 			'osver'   => $^O,

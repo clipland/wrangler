@@ -15,6 +15,7 @@ use File::Path ();
 use File::Basename ();
 use File::Spec ();
 use MIME::Types ();
+use Encode;
 
 sub new {
 	my $class = shift;
@@ -211,6 +212,12 @@ sub list {
 	 return bless([], 'error') unless $ok;
 	 my @items = readdir($dh);
 	closedir($dh);
+
+	# strings coming from filesystem are probably utf8,
+	# transfer them to perl-internal
+	for(@items){
+		$_ = decode_utf8($_);
+	}
 
 	my @richlist;
 	if($wishlist && "@$wishlist" eq 'Plain'){	# we'll see what the final name for "only dir contents, no stats, nothing" will be

@@ -66,8 +66,8 @@ via .deb file:
 
     go to http://www.clipland.com/wrangler
     download .deb file
-    install File::ExtAttr via CPAN (as long as there's no libfile-extattr-perl package)
     use gdebi or similar to install
+    install File::ExtAttr via CPAN (as long as there's no libfile-extattr-perl package)
 
 
 ## AUTHOR

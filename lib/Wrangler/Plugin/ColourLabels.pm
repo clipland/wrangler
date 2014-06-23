@@ -5,7 +5,6 @@ use warnings;
 
 use Wx ('wxITEM_RADIO');
 
-our $VERSION = 0.1;
 our @osx_colours = ('None','Orange', 'Red', 'Yellow', 'Blue', 'Purple', 'Green', 'Gray');
 our @osx_colour_values = (
 	[0,0,0],	# "None"

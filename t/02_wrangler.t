@@ -2,7 +2,7 @@
 
 use strict;
 use warnings;
-use Test::More tests => 76;
+use Test::More tests => 78;
 
 use Wrangler;
 use Wrangler::FileSystem::Linux;
@@ -172,29 +172,35 @@ for('text.txt','video.mp4','image.jpg'){
 	);
 
 
+	## gvfs-trash changed behaviour somewehere between Ubuntu 12.x and 14.x, so that
+	## it's not able to trash file outside of user's home anymore, so we don't test
+	## in /tmp/ but in ~/
+	require File::HomeDir;
+	my $home_tmpdir = File::Spec->catfile(File::HomeDir->my_home, 'testing-wrangler-'.time());
+	ok( $wrangler->{fs}->mkdir(  $home_tmpdir ), 'create a user temp dir');
+
 	$ok = $wrangler->{fs}->mknod(
-		File::Spec->catfile($dir, 'new file with (uncommon chars ä % $ ! è)'),
+		File::Spec->catfile($home_tmpdir, 'new file with (uncommon chars ä % $ ! è)'),
 	);
 	ok( $ok, 'mknod() returns true'); # based on CORE::open which returns true for success
-	ok( -f File::Spec->catfile($dir, 'new file with (uncommon chars ä % $ ! è)'), 'PerlIO test f: new uncommon-chars file exists');
+	ok( -f File::Spec->catfile($home_tmpdir, 'new file with (uncommon chars ä % $ ! è)'), 'PerlIO test f: new uncommon-chars file exists');
 	ok(
 		$wrangler->{fs}->test(
 			'f',
-			File::Spec->catfile($dir, 'new file with (uncommon chars ä % $ ! è)')
+			File::Spec->catfile($home_tmpdir, 'new file with (uncommon chars ä % $ ! è)')
 		),
 		"WranglerFS test f: new uncommon-chars exists"
 	);
 
-
 	$ok = $wrangler->{fs}->trash(
-		File::Spec->catfile($dir, 'new file with (uncommon chars ä % $ ! è)'),
+		File::Spec->catfile($home_tmpdir, 'new file with (uncommon chars ä % $ ! è)'),
 	);
 	ok( $ok, 'trash() returns true'); # based on CORE::open which returns true for success
-	ok( !-e File::Spec->catfile($dir, 'new file with (uncommon chars ä % $ ! è)'), 'PerlIO test f: trashed uncommon-chars file is gone');
+	ok( !-e File::Spec->catfile($home_tmpdir, 'new file with (uncommon chars ä % $ ! è)'), 'PerlIO test f: trashed uncommon-chars file is gone');
 	ok(
 		!$wrangler->{fs}->test(
 			'e',
-			File::Spec->catfile($dir, 'new file with (uncommon chars ä % $ ! è)')
+			File::Spec->catfile($home_tmpdir, 'new file with (uncommon chars ä % $ ! è)')
 		),
 		"WranglerFS test f: trashed uncommon-chars file is gone"
 	);
@@ -228,6 +234,11 @@ for('text.txt','video.mp4','image.jpg'){
 				ok( -f File::Spec->catfile(File::HomeDir->my_home, '.local/share/Trash/files/', 'new file with (uncommon chars ä % $ ! è)'), 'trashed uncommon-chars file seems to have arrived in system trash');
 			}
 		}
+	}
+
+	if(-d $home_tmpdir){
+		# rmdir($home_tmpdir) or print STDOUT "unable to remove testing directory '$home_tmpdir': $!";
+		ok( $wrangler->{fs}->rmdir( $home_tmpdir ),  "remove testing directory '$home_tmpdir'");
 	}
 
 

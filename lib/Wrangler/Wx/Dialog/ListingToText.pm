@@ -6,6 +6,7 @@ use warnings;
 use Wx qw/:id :misc :sizer :dialog :textctrl :filedialog wxTheClipboard/;
 use Wx::Event qw(EVT_RADIOBUTTON EVT_BUTTON);
 # use Wx::DND;
+
 use base 'Wx::Dialog';
 
 sub new {

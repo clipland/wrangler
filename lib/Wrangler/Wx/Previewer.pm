@@ -2,6 +2,7 @@ package Wrangler::Wx::Previewer;
 
 use strict;
 use warnings;
+
 use base 'Wx::Panel';
 use Wx ':everything';
 use Wx::Event qw(EVT_PAINT EVT_SIZE EVT_MENU EVT_LEFT_DCLICK EVT_ENTER_WINDOW EVT_LEAVE_WINDOW EVT_LEFT_DOWN EVT_LEFT_UP EVT_RIGHT_UP EVT_TIMER EVT_MOUSEWHEEL);
@@ -344,10 +345,29 @@ sub Populate {
 	$previewer->LoadDefault(); # =load nothing, show "no preview"
 }
 
+sub probe_helper {
+	my $previewer = shift;
+
+	unless( defined($previewer->{helper_probed}) ){
+		my $test = `$Wrangler::Config::env{HelperFfmpeg}`;
+		if($test && $test =~ /usage/){
+			Wrangler::debug('Previewer: helper found');
+			$previewer->{helper_probed} = 1;
+		}else{
+			Wrangler::debug('Previewer: helper not found');
+			$previewer->{helper_probed} = 0;
+		}
+	}
+
+	return $previewer->{helper_probed};
+}
+
 sub VideoThumbnail {
 	my $previewer = shift;
 	my $path = quotemeta(shift);
 	my $thumbpos = shift || 2;
+
+	return undef unless $previewer->probe_helper();
 
 	my $out;
 	eval {
@@ -364,6 +384,8 @@ sub VideoMetadata {
 	my $previewer = shift;
 	my $path = quotemeta(shift);
 	my $thumbpos = shift || 2;
+
+	return undef unless $previewer->probe_helper();
 
 	my $err;
 	eval {
@@ -432,6 +454,8 @@ sub LoadDefault {
 		my $dc = Wx::MemoryDC->new();
 		$self->{no_thumb} = Wx::Bitmap->new(400, 300, -1);
 		$dc->SelectObject($self->{no_thumb});
+		$dc->SetBrush( Wx::Brush->new( Wx::Colour->new(0,0,0), wxSOLID ) );
+		$dc->DrawRectangle(0, 0, 400, 300); # make sure nothing shines through
 		$dc->GradientFillLinear(
 			Wx::Rect->new(0,30,399,160),
 			Wx::Colour->new(0,0,0),
