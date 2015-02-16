@@ -83,7 +83,7 @@ sub new {
 
 	my $wrangler_version = $Wrangler::VERSION;
 	$wrangler_version =~ s/,/\./;
-	my $text = Wx::StaticText->new($self, -1, "This is Wrangler.\nVersion ". $wrangler_version ."\n\n© 2009-2014 Clipland GmbH. All rights reserved.");
+	my $text = Wx::StaticText->new($self, -1, "This is Wrangler.\nVersion ". $wrangler_version ."\n\n© 2009-2015 Clipland GmbH. All rights reserved.");
 	$text->SetForegroundColour(Wx::Colour->new(45,45,45) );
 
 	my $sizer = Wx::FlexGridSizer->new(2, 1, 0, 0);	# rows,cols,vgap,hgap

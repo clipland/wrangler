@@ -72,8 +72,13 @@ WriteMakefile(
 		'bin/wrangler'
 	],
 	META_MERGE	=> {	# CPAN::Meta::Spec
+		'meta-spec'	=> { version => 2 },
 		resources	=> {
-			repository => 'https://github.com/clipland/wrangler',
+			repository => {
+				type=> 'git',
+				url => 'https://github.com/clipland/wrangler.git',
+				web => 'https://github.com/clipland/wrangler',
+			},
 		},
 		prereqs	=> {
 			test => {
@@ -135,7 +140,7 @@ sub may_send_version_information {
 
 	my %values = (
 			'dist'    => 'Wrangler',
-			'version' => '2.14',
+			'version' => '2.15',
 			'osname'  => $Config::Config{osname},
 			'archname'=> $Config::Config{archname},
 			'osver'   => $^O,

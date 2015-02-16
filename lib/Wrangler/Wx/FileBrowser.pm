@@ -855,8 +855,7 @@ sub Rename {
 			unless( $dialog->ShowModal == wxID_CANCEL ){
 				## newpath
 				my $newpath = $dialog->GetValue();
-					$newpath = decode_utf8($newpath);	# decode
-					Encode::_utf8_off($newpath);		# then remove the utf8-flag the hard way
+
 				$newpath = $filebrowser->{wrangler}->{fs}->catfile( $filebrowser->{current_dir}, $newpath);
 
 				# check if label has been edited
@@ -868,7 +867,7 @@ sub Rename {
 				if($ok){
 					$filebrowser->RePopulate();
 				}else{
-					my $dialog = Wx::MessageDialog->new($filebrowser, "Error renaming \"$oldpath\" to \"$newpath\": $!", "Renaming error", wxOK );
+					my $dialog = Wx::MessageDialog->new($filebrowser, "Error renaming (Rename, single) \"$oldpath\" to \"$newpath\": $!", "Renaming error", wxOK );
 					$dialog->ShowModal();
 				}
 			}
@@ -886,10 +885,6 @@ sub Rename {
 
 				my $pre = $dialog->{pre}->GetValue();
 				my $ins = $dialog->{ins}->GetValue();
-					$pre = decode_utf8($pre);	# decode
-					Encode::_utf8_off($pre);	# then remove the utf8-flag the hard way
-					$ins = decode_utf8($ins);	# decode
-					Encode::_utf8_off($ins);	# then remove the utf8-flag the hard way
 
 				my @errors;
 				for(@{ $filebrowser->{our_stash}->{rename} }){
@@ -903,7 +898,7 @@ sub Rename {
 
 					## do the actual rename
 					my $ok = $filebrowser->{wrangler}->{fs}->rename($oldpath, $newpath);
-					push(@errors, "Error renaming \"$oldpath\" to \"$newpath\": $!\n") unless $ok;
+					push(@errors, "Error renaming (Rename, multiple) \"$oldpath\" to \"$newpath\": $!\n") unless $ok;
 				}
 				if(@errors){
 					my $dialog = Wx::MessageDialog->new($filebrowser, "@errors", "Renaming error", wxOK );
@@ -915,8 +910,7 @@ sub Rename {
 				Wrangler::debug("Pattern-rename was used ");
 
 				my $multi = $dialog->{multi}->GetValue();
-					$multi = decode_utf8($multi);	# decode
-					Encode::_utf8_off($multi);	# then remove the utf8-flag the hard way
+
 				my $oldlen = $dialog->{length};
 				my $newlen = length($multi);
 				Wrangler::debug("MULTI: $multi OLDLEN: $oldlen NEWLEN:$newlen");
@@ -1080,8 +1074,6 @@ sub OnEndLabelEdit {
 	if( $filebrowser->{our_stash}->{mkdir} ){
 		## mkdir path
 		my $path = $event->GetItem->GetText;
-			$path = decode_utf8($path);	# decode
-			Encode::_utf8_off($path);	# then remove the utf8-flag the hard way
 
 		$path = $filebrowser->{wrangler}->{fs}->catfile( $filebrowser->{current_dir}, $path );
 		my $path_amended;
@@ -1111,8 +1103,6 @@ sub OnEndLabelEdit {
 	}elsif( $filebrowser->{our_stash}->{mknod} ){
 		## mknod path
 		my $path = $event->GetItem->GetText;
-			$path = decode_utf8($path);	# decode
-			Encode::_utf8_off($path);	# then remove the utf8-flag the hard way
 
 		$path = $filebrowser->{wrangler}->{fs}->catfile( $filebrowser->{current_dir}, $path );
 		my $path_amended;
@@ -1146,8 +1136,7 @@ sub OnEndLabelEdit {
 
 		## newpath
 		my $newpath = $event->GetItem->GetText;
-			$newpath = decode_utf8($newpath);	# decode
-			Encode::_utf8_off($newpath);		# then remove the utf8-flag the hard way
+
 		$newpath = $filebrowser->{wrangler}->{fs}->catfile( $filebrowser->{current_dir}, $newpath);
 
 		# check if label has been edited
@@ -1160,7 +1149,7 @@ sub OnEndLabelEdit {
 			# labelEdits already changed the displayed value
 			# no: $filebrowser->RePopulate(); needed
 		}else{
-			my $dialog = Wx::MessageDialog->new($filebrowser, "Error renaming \"$oldpath\" to \"$newpath\": $!", "Renaming error", wxOK );
+			my $dialog = Wx::MessageDialog->new($filebrowser, "Error renaming (OnEndLabelEdit) \"$oldpath\" to \"$newpath\": $!", "Renaming error", wxOK );
 			$dialog->ShowModal();
 			$event->Veto();
 			# caveat: here, richlist_item data of this newly created item is incomplete! which may lead to errors
@@ -1255,11 +1244,9 @@ sub Paste {
 
 	my @errors;
 	for( $fdo->GetFilenames() ){
-		# it's probably us doing something completely wrong with encodings, BUT: why is this needed? Unless we remove the utf8
-		# flag here, the concat with {current_dir} results in a wrongly encoded $newpath, which Perl::IO operations choke on;
-		# the easy explanation would be: Wx messes up our paths while they are in $fdo (or we are not handling it correctly)
-		my $filepath = decode_utf8($_);	# decode
-		Encode::_utf8_off($filepath);	# then remove the utf8-flag the hard way
+		my $filepath = $_;
+
+		next if $filepath =~ /\.\.$/; # don't move/copy the up-dir!! todo: prevent that in UI
 
 		my ($name,$path) = $filebrowser->{wrangler}->{fs}->fileparse($filepath);
 		my $newpath = $filebrowser->{wrangler}->{fs}->catfile($filebrowser->{current_dir}, $name);
@@ -1285,18 +1272,10 @@ sub Paste {
 				next;
 			}
 
-			## since we use system 'mv' in move(), this is not needed anymore
+			## since we use system 'mv' in move()
 			# Preserving xattr on rename/move is not user-settable, as we compensate for "moves across fs boundaries" here,
 			# by always using move() instead of rename(). .. All that is mostly opaque to users. A user expects a dwim
 			# move/mv, and the system command usually *does* preserve xattr
-
-			# if($richproperties){
-			#	Wrangler::debug(" preserving xattribs");
-			#	for my $key (keys %$richproperties ){
-			#		# Wrangler::debug(" - $key");
-			#		$filebrowser->{wrangler}->{fs}->set_property($newpath, $key, $richproperties->{$key}) if $key =~ /^Extended Attributes::/;
-			#	}
-			# }
 		}else{
 			# figure out new name: append "_copy"
 			if( $filebrowser->{wrangler}->{fs}->test('e', $newpath) ){
@@ -1357,11 +1336,9 @@ sub PasteSymlinks {
 	}
 
 	for( $fdo->GetFilenames() ){
-		# it's probably us doing something completely wrong with encodings, BUT: why is this needed? Unless we remove the utf8
-		# flag here, the concat with {current_dir} results in a wrongly encoded $newpath, which Perl::IO operations choke on;
-		# the easy explanation would be: Wx messes up our paths while they are in $fdo (or we are not handling it correctly)
-		my $filepath = decode_utf8($_);	# decode
-		Encode::_utf8_off($filepath);	# then remove the utf8-flag the hard way
+		my $filepath = $_;
+
+		next if $filepath =~ /\.\.$/; # don't handle the up-dir!! todo: prevent that in UI
 
 		my ($name,$path) = $filebrowser->{wrangler}->{fs}->fileparse($filepath);
 		my $newpath = $filebrowser->{wrangler}->{fs}->catfile($filebrowser->{current_dir}, $name);

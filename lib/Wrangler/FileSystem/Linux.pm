@@ -44,6 +44,8 @@ sub catfile {
 
 sub available_properties {
 	my ($self, $path, $args) = @_;
+	$path = decode('UTF-8',$path);
+	utf8::upgrade($path);
 
 	my @keys;
 	if($path){
@@ -205,6 +207,8 @@ sub properties {
 
 sub list {
 	my ($self, $path, $wishlist) = @_;
+	$path = decode('UTF-8',$path);
+	utf8::upgrade( $path );
 
 	$wishlist = undef if $wishlist && @$wishlist == 0;
 
@@ -213,10 +217,11 @@ sub list {
 	 my @items = readdir($dh);
 	closedir($dh);
 
-	# strings coming from filesystem are probably utf8,
+	# strings coming from filesystem are probably utf8 (although we'd better check the system's locale)
 	# transfer them to perl-internal
 	for(@items){
-		$_ = decode_utf8($_);
+		$_ = decode('UTF-8',$_);
+		utf8::upgrade( $_ );
 	}
 
 	my @richlist;
@@ -483,26 +488,48 @@ sub utime {
 sub listfattr {
 	my ($self, $path) = @_;
 
-	File::ExtAttr::listfattr($path);
+	my @attr_list = File::ExtAttr::listfattr($path);
+
+	# more recent WxWidgets expect decoded/Perl-internal'ed strings
+	# Mark's note: http://grokbase.com/t/perl/wxperl-users/134pn2zyr7/can-we-print-utf-8-chars-in-wx-textctrl-fields#20130429gjrtttc5l3q6zxegl7hgngxwwa
+	for(@attr_list){
+		# we keep values in Perl-internal
+		utf8::upgrade( $_ );
+	}
+
+	return @attr_list;
 }
 
 sub getfattr {
 	my ($self, $path, $key) = @_;
 
 	# we return values from the 'user.' namespace only, for now (and we omit the 'user.' prefix in keys)
-	File::ExtAttr::getfattr($path, $key, { namespace => 'user' });
+	my $value = File::ExtAttr::getfattr($path, $key, { namespace => 'user' });
+
+	# xattr are encoding agnostic, means they simply store bytes.
+	# It's on us to store it in a useful encoding: we decide for utf-8
+	if( defined($value) ){
+		$value = decode('utf-8', $value);
+		utf8::upgrade($value);	# Mark's note: http://grokbase.com/t/perl/wxperl-users/134pn2zyr7/can-we-print-utf-8-chars-in-wx-textctrl-fields#20130429gjrtttc5l3q6zxegl7hgngxwwa
+	}
+
+	# more recent WxWidgets expect decoded/Perl-internal'ed strings
+#	return $value ? decode_utf8($value) : $value; # test for undef
+	return $value;
 }
 
 sub setfattr {
 	my ($self, $path, $key, $value) = @_;
 
-	File::ExtAttr::setfattr($path, $key, $value, { namespace => 'user' });
+	# It's on us to store it in a useful encoding: we decide for utf-8
+	File::ExtAttr::setfattr($path, encode('utf-8',$key), encode('utf-8',$value), { namespace => 'user' });
+#	File::ExtAttr::setfattr($path, $key, $value, { namespace => 'user' });
 }
 
 sub delfattr {
 	my ($self, $path, $key) = @_;
 
-	File::ExtAttr::delfattr($path, $key, { namespace => 'user' });
+	File::ExtAttr::delfattr($path, encode('utf-8',$key), { namespace => 'user' });
 }
 
 1;

@@ -10,6 +10,8 @@ use Data::Dumper ();
 use Digest::MD5 ();
 use Path::Tiny;
 
+# Wx::PlatformInfo; # check for unicode build
+
 our %default_settings = (
 	'ui.main.width'				=> 1000,
 	'ui.main.height'			=> 800,

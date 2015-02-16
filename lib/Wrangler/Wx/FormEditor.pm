@@ -255,6 +255,7 @@ sub Create {
 	unless( $dialog->ShowModal == wxID_CANCEL ){
 		my $new_editor = $dialog->GetValue();
 		if( $new_editor ne '' && !defined($editor->{editors}->{ $new_editor }) ){
+			Wrangler::debug("FormEditor::Create: adding new editor layout '$new_editor' ");
 			# $editor->{editors}->{ $new_editor } = [];
 			$editor->{wrangler}->config()->{'ui.formeditor'}->{ $new_editor } = [];
 			$editor->{wrangler}->config()->{'ui.formeditor.selected'} = $new_editor;
@@ -288,6 +289,7 @@ sub Rename {
 		my $dialog = Wx::MessageDialog->new($editor, "Editor names have to be unique", "Oops...", wxOK );
 		$dialog->ShowModal();
 	}else{
+		Wrangler::debug("FormEditor::Rename: editor layout '$editor_name' to '$new_editor_name' ");
 		$editor->{wrangler}->config()->{'ui.formeditor'}->{ $new_editor_name } = $editor->{wrangler}->config()->{'ui.formeditor'}->{ $editor_name };
 		delete($editor->{wrangler}->config()->{'ui.formeditor'}->{ $editor_name });
 		$editor->{wrangler}->config()->{'ui.formeditor.selected'} = $new_editor_name;
@@ -303,9 +305,9 @@ sub Delete {
 	my $dialog = Wx::MessageDialog->new($editor, "Really delete editor '$editor_name'?", "Confirm", wxYES_NO | wxNO_DEFAULT | wxICON_EXCLAMATION );
 
 	if($dialog->ShowModal() == wxID_YES){
-		print "Delete: $editor_name \n";
-	#	delete($editor->{wrangler}->config()->{'ui.formeditor'}->{ $editor_name });
-		delete($editor->{editors}->{ $editor_name });
+		Wrangler::debug("FormEditor::Delete: editor layout '$editor_name' ");
+		delete($editor->{wrangler}->config()->{'ui.formeditor'}->{ $editor_name });
+	#	delete($editor->{editors}->{ $editor_name });
 		$editor->{wrangler}->config()->{'ui.formeditor.selected'} = undef;
 
 		Wrangler::PubSub::publish('main.formeditor.recreate');
@@ -320,22 +322,31 @@ sub AddField {
 	my $field_name = shift;
 	my $editor_name = $editor->{wrangler}->config()->{'ui.formeditor.selected'};
 
-	unless($field_name){
+	# Wrangler::debug("FormEditor::AddField: $editor, ".($field_name||'(no field name)').", $editor_name");
+	if($field_name){
+		if($field_name ~~ @{ $editor->{wrangler}->config()->{'ui.formeditor'}->{ $editor_name } }){ # never happens, is prevented in submenu
+			my $dialog = Wx::MessageDialog->new($editor, "Field '$field_name' is already in this layout.", "Oops...", wxOK );
+			$dialog->ShowModal();
+
+			return;
+		}
+	}else{
 		my $dialog = Wx::TextEntryDialog->new( $editor, "Add this field to editor", "Add this field to editor", "");
 
-		$field_name = $dialog->GetValue() unless $dialog->ShowModal == wxID_CANCEL;
+		$field_name = $editor->AddField($dialog->GetValue()) if $dialog->ShowModal == wxID_OK;
 
 		$dialog->Destroy();
+
+		return unless $field_name;
 	}
 
-	if( $field_name ne '' && $field_name !~ @{ $editor->{wrangler}->config()->{'ui.formeditor'}->{ $editor_name } } ){
-		push(@{ $editor->{wrangler}->config()->{'ui.formeditor'}->{ $editor_name } }, $field_name);
+	Wrangler::debug("FormEditor::AddField: '$field_name' to editor layout '$editor_name' ");
+	push(@{ $editor->{wrangler}->config()->{'ui.formeditor'}->{ $editor_name } }, $field_name);
 
-		# update $wishlist
-		$Wrangler::wishlist->{ $field_name } = 1;
+	# update $wishlist
+	$Wrangler::wishlist->{ $field_name } = 1;
 
-		Wrangler::PubSub::publish('main.formeditor.recreate');
-	}
+	Wrangler::PubSub::publish('main.formeditor.recreate');
 }
 
 sub RemoveField {
@@ -348,7 +359,7 @@ sub RemoveField {
 		last if $_ eq $field_name;
 		$i++;
 	}
-	# print "RemoveField: $field_name -> i:$i\n";
+	Wrangler::debug("FormEditor::RemoveField: '$field_name' from editor layout '$editor_name' (pos:$i) ");
 
 	splice(@{ $editor->{wrangler}->config()->{'ui.formeditor'}->{ $editor_name } },$i,1); # remove pos from array
 	Wrangler::PubSub::publish('main.formeditor.recreate');
@@ -356,8 +367,10 @@ sub RemoveField {
 
 sub SelectEditor {
 	my $editor = shift;
+	my $editor_name = shift;
 
-	$editor->{wrangler}->config()->{'ui.formeditor.selected'} = shift;
+	Wrangler::debug("FormEditor::SelectEditor: editor layout '$editor_name' ");
+	$editor->{wrangler}->config()->{'ui.formeditor.selected'} = $editor_name;
 
 	Wrangler::PubSub::publish('main.formeditor.recreate');
 }
@@ -377,7 +390,7 @@ sub SaveFieldLayout {
 	my $json = eval { JSON::XS->new->utf8->pretty->encode( { $editor_name => $editor->{editors}->{ $editor_name } } ) };
 	Wrangler::debug("Wrangler::Wx::FormEditor::SaveFieldLayout: error encoding fields: $@") if $@;
 
-	path($path)->spew_utf8(\$json) or Wrangler::debug("Wrangler::Wx::FormEditor::SaveFieldLayout: error writing layout file: $path: $!")
+	path($path)->spew_raw($json) or Wrangler::debug("Wrangler::Wx::FormEditor::SaveFieldLayout: error writing layout file: $path: $!")
 }
 
 sub LoadFieldLayout {
@@ -392,7 +405,7 @@ sub LoadFieldLayout {
 	my $path = $file_dialog->GetPath;
 	$file_dialog->Destroy;
 
-	my $json = path($path)->slurp_utf8 or Wrangler::debug("Wrangler::Wx::FormEditor::LoadFieldLayout: error reading layout file: $!");
+	my $json = path($path)->slurp_raw or Wrangler::debug("Wrangler::Wx::FormEditor::LoadFieldLayout: error reading layout file: $!");
 	my $ref = eval { JSON::XS::decode_json( $json ) };
 	Wrangler::debug("Wrangler::Wx::FormEditor::LoadFieldLayout: error decoding layout file: $@") if $@;
 
@@ -473,10 +486,11 @@ sub OnRightClick {
 		$menu->AppendSeparator();
 	}
 
+	## "Add fields..."
 	if($editor->{selected_editor}){
 	#	if($editor->{field_count}){
 			my $submenu = Wx::Menu->new();
-			for( @{ $editor->{wrangler}->{fs}->available_properties($editor->{wrangler}->{current_dir}) } ){
+			for( sort @{ $editor->{wrangler}->{fs}->available_properties($editor->{wrangler}->{current_dir}) } ){
 				my $item = $submenu->Append(-1, $_);
 				$submenu->Enable($item->GetId(),0) if $editor->{ctrl_lookup}->{$_};
 				EVT_MENU( $editor, $item, sub { $editor->AddField($item->GetText()); } ); # deprecated: use GetItemLabel text soon
@@ -489,11 +503,12 @@ sub OnRightClick {
 		$menu->AppendSeparator();
 	}
 
+	## "Add editor...", "Switch...", etc. if multiple editors
 	EVT_MENU( $editor, $menu->Append(-1, "Add editor...", 'Create a new editor layout'), sub { $editor->Create(); } );
 	if(ref($editor->{editors})){
 		if(keys(%{$editor->{editors}}) > 1){
 			my $submenu = Wx::Menu->new();
-			for( keys %{ $editor->{editors} } ){
+			for( sort keys %{ $editor->{editors} } ){
 				my $item = $submenu->Append(-1, $_);
 				$submenu->Enable($item->GetId(),0) if $_ eq $editor->{selected_editor};
 				EVT_MENU( $editor, $item, sub { $editor->SelectEditor($item->GetText()); } ); # deprecated: use GetItemLabel text soon
@@ -505,6 +520,7 @@ sub OnRightClick {
 	}
 	$menu->AppendSeparator();
 
+	## load/save field layout(s)
 	EVT_MENU( $editor, $menu->Append(-1, "Load field layout", 'Load a field layout from a file'), sub { $editor->LoadFieldLayout(); } );
 	my $itemSave = Wx::MenuItem->new($menu, -1, "Save field layout", "Save this field layout to a file");
 	$menu->Append($itemSave);
@@ -517,6 +533,7 @@ sub OnRightClick {
 	}
 	$menu->AppendSeparator();
 
+	## shortcut settings
 	EVT_MENU( $editor, $menu->Append(-1, "Settings", 'Settings'), sub { Wrangler::PubSub::publish('show.settings', 0, 1); } ); # send to "Value Shortcuts" until FormEditor has its own Settings
 
 	$editor->PopupMenu( $menu, wxDefaultPosition );
@@ -546,9 +563,12 @@ FormEditor is able to manage multiple "views", called editors, where each editor
 can be configured by the user to show arbitrary metadata fields. With this, a user
 can create customised data-entry masks or an alternative metadata display. FormEditor
 presents metadata in tabular form, with the metadata-key on the left and a TextCtrl
-displaying the current metadata-value on the right, for possible modification. Metadata-fields
-are populated once a selection is made in FileBrowser. In case the user has changed
-any data, this change is committed when selection moves to another file.
+displaying the current metadata-value on the right, for possible modification.
+Metadata-fields are populated once a selection is made in FileBrowser. In case
+the user has changed any data, this change is committed when selection moves to
+another file.
+
+To configure form fields, right-click on the editor.
 
 =head1 COPYRIGHT & LICENSE
 

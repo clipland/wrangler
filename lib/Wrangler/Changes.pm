@@ -8,6 +8,15 @@ use warnings;
 
 our $text = "Revision history for Wrangler
 
+2.15	2015-02-16
+	- Layers: fixed display of utf-8 strings by properly
+	  handling read xattr values
+	- various other utf-8 related fixesg
+	- FileBrowser: Settings: fixed column hide/unhide UI
+	- FileBrowser: Settings: allow user to save/load column layouts
+	- FileBrowser: IO: prevent wrong handling of up-dir
+	- FormEditor: fixed adding form fields
+
 2.14	2014-06-23
 	- Previewer: fix 'no thumb' rendering for newer Wx
 	- Sidebar: look for gtk bookmarks file in gtk3 location

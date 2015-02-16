@@ -34,8 +34,6 @@ sub new {
 	my @pos;
 	foreach my $hashref (@{ $ref }){
 		my $file = $hashref->{file};
-			$file = decode_utf8($file);	# decode
-			Encode::_utf8_off($file);	# then remove the utf8-flag the hard way
 
 		foreach my $i (0..length($file)){
 			if(!defined($pos[$i])){

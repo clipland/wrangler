@@ -360,9 +360,11 @@ package Wrangler::Wx::Dialog::Settings::FileBrowser;
 use strict;
 use warnings;
 
-use Wx qw(:listctrl wxDefaultPosition wxDefaultSize wxDEFAULT_DIALOG_STYLE wxEXPAND wxVERTICAL wxLEFT wxTOP wxBOTTOM wxRIGHT wxRESIZE_BORDER wxHORIZONTAL wxID_CANCEL wxID_OK wxALL wxGROW wxALIGN_RIGHT);
+use Wx qw(:listctrl wxDefaultPosition wxDefaultSize wxDEFAULT_DIALOG_STYLE wxEXPAND wxVERTICAL wxLEFT wxTOP wxBOTTOM wxRIGHT wxRESIZE_BORDER wxHORIZONTAL wxID_CANCEL wxID_OK wxALL wxGROW wxALIGN_RIGHT wxFD_SAVE wxFD_OPEN);
 use Wx::Event qw(EVT_CHECKBOX EVT_TEXT EVT_COLOURPICKER_CHANGED EVT_LIST_ITEM_ACTIVATED EVT_LIST_ITEM_SELECTED EVT_LIST_ITEM_RIGHT_CLICK EVT_MENU EVT_LIST_BEGIN_DRAG);
 use base 'Wx::Notebook';
+use JSON::XS ();
+use Path::Tiny;
 
 sub new {
 	my $class = shift;
@@ -575,7 +577,7 @@ sub new {
 		$self->Rename();
 	});
 	EVT_LIST_ITEM_SELECTED($self, $self->{listctrl}, sub {
-		print "Row selected:\n";
+		print "Settings: Row selected:\n";
 		$_[1]->Skip(1);
 	});
 	EVT_LIST_ITEM_RIGHT_CLICK($self, $self->{listctrl}, sub { print "OnRightClick: @_\n"; OnRightClick(@_); });
@@ -598,7 +600,8 @@ sub Populate {
 
 	$settings->{listctrl}->DeleteAllItems();
 
-	my $prop_ref = $settings->{wrangler}->{fs}->available_properties($settings->{wrangler}->{current_dir});
+	$settings->{prop_list} = $settings->{wrangler}->{fs}->available_properties($settings->{wrangler}->{current_dir});
+	@{ $settings->{prop_list} } = sort @{ $settings->{prop_list} };
 
 	my %used;
 	my $rowCnt = 0;
@@ -613,16 +616,14 @@ sub Populate {
 		$rowCnt++;
 	}
 
-	my $i=0;
-	for(@$prop_ref){
-		unless($used{ $_ }){
+	for(0..$#{ $settings->{prop_list} }){
+		unless($used{ $settings->{prop_list}->[$_] }){
 			my $itemId = $settings->{listctrl}->InsertStringItem( $rowCnt, '' );
-			$settings->{listctrl}->SetItem( $itemId, 1, $_ );
+			$settings->{listctrl}->SetItem( $itemId, 1, $settings->{prop_list}->[$_] );
 			$settings->{listctrl}->SetItemTextColour($itemId, Wx::Colour->new(128,128,128));
-			$settings->{listctrl}->SetItemData($itemId, $i);
+			$settings->{listctrl}->SetItemData($itemId, $_); # data is pos in prop_list array
 		}
 		$rowCnt++;
-		$i++;
 	}
 }
 
@@ -679,8 +680,9 @@ sub AddFromList {
 	my $pos = $settings->{listctrl}->GetItemData($selections[0]);
 
 	my $columns = $settings->{wrangler}->config()->{'ui.filebrowser.columns'};
-	my $prop_ref = $settings->{wrangler}->{fs}->available_properties($settings->{wrangler}->{current_dir});
-	my $metakey = $prop_ref->[$pos];
+	# Wrangler::debug("Settings::AddFromList: pos:$pos -> prop_list value:$settings->{prop_list}->[$pos]");
+
+	my $metakey = $settings->{prop_list}->[$pos];
 	my $label = $metakey;
 
 	push(@$columns,	{
@@ -787,6 +789,68 @@ sub Remove {
 	Wrangler::PubSub::publish('filebrowser.refresh.all');
 }
 
+# compare FormEditor::SaveFieldLayout
+sub SaveColumnLayout {
+	my $settings = shift;
+#	my $editor_name = $editor->{wrangler}->config()->{'ui.formeditor.selected'};
+	my $column_layout = 'current-column-layout';
+
+	Wrangler::debug("Settings::FileBrowser::SaveColumnLayout");
+	my $file_dialog = Wx::FileDialog->new($settings, "Save columns layout", '', $column_layout.'.wcl', "Wrangler Column Layout (*.wcl)|*.wcl;All files (*.*)|*.*", wxFD_SAVE);
+
+	return if $file_dialog->ShowModal == wxID_CANCEL;
+
+	my $path = $file_dialog->GetPath;
+	$file_dialog->Destroy;
+
+	my $json = eval { JSON::XS->new->utf8->pretty->encode( { $column_layout => $settings->{wrangler}->config()->{'ui.filebrowser.columns'} } ) };
+	Wrangler::debug("Settings::FileBrowser::SaveColumnLayout: error encoding fields: $@") if $@;
+
+	path($path)->spew_raw($json) or Wrangler::debug("Settings::FileBrowser::SaveColumnLayout: error writing column file: $path: $!")
+}
+
+# compare FormEditor::LoadFieldLayout
+sub LoadColumnLayout {
+	my $settings = shift;
+#	my $editor_name = $editor->{wrangler}->config()->{'ui.formeditor.selected'};
+	my $column_layout = 'current-column-layout';
+
+	Wrangler::debug("Settings::FileBrowser::LoadColumnLayout");
+	my $file_dialog = Wx::FileDialog->new($settings, "Load columns layout", '', '', "Wrangler Column Layout (*.wcl)|*.wcl;|All files (*.*)|*.*", wxFD_OPEN);
+
+	return if $file_dialog->ShowModal == wxID_CANCEL;
+
+	my $path = $file_dialog->GetPath;
+	$file_dialog->Destroy;
+
+	my $json = path($path)->slurp_raw or Wrangler::debug("Settings::FileBrowser::LoadColumnLayout: error reading layout file: $!");
+	my $ref = eval { JSON::XS::decode_json( $json ) };
+	Wrangler::debug("Settings::FileBrowser::LoadColumnLayout: error decoding layout file: $@") if $@;
+
+#	my $last;
+#	for(keys %$ref){
+#		unless(defined($editor->{editors}->{ $_ })){
+#			Wrangler::debug("Settings::FileBrowser::LoadColumnLayout: adding layout $_");
+#			$editor->{editors}->{ $_ } = $ref->{$_} ;
+#			$last = $_;
+#		}
+#	}
+#
+#	$editor->{wrangler}->config()->{'ui.formeditor.selected'} = $last;
+
+#	my $columns = $settings->{wrangler}->config()->{'ui.filebrowser.columns'};
+
+	unless($ref->{'current-column-layout'}){ # hardcoded for now; todo: multiple layouts management
+		Wrangler::debug("Settings::FileBrowser::LoadColumnLayout: for now, column layout files must provide columns for a layout named 'current-column-layout' ") if $@;
+		return;
+	}
+
+	$settings->{wrangler}->config()->{'ui.filebrowser.columns'} = $ref->{'current-column-layout'};
+
+	$settings->Populate();
+	Wrangler::PubSub::publish('filebrowser.refresh.all');
+}
+
 sub OnRightClick {
 	my $settings = shift;
 	my $event = shift;
@@ -795,7 +859,7 @@ sub OnRightClick {
 
 	my @selections = $settings->GetSelections();
 
-	if( defined($selections[0]) && $settings->{listctrl}->GetItemData( $selections[0] ) ){
+	if( defined($selections[0]) && $settings->{listctrl}->GetItem( $selections[0], 0 )->GetText() eq '' ){ # hidden props/columns have empty data in column-0/"label"
 		EVT_MENU( $settings, $menu->Append(-1, "Show this column", 'Show this column' ),	sub { $settings->AddFromList(); } );
 	}else{
 		EVT_MENU( $settings, $menu->Append(-1, "Move up", 'Move column up' ),		sub { $settings->Move('up'); } );
@@ -809,6 +873,10 @@ sub OnRightClick {
 	}
 	$menu->AppendSeparator();
 	EVT_MENU( $settings, $menu->Append(-1, "Add column not on list...", 'Add a metadata key which is not on the list' ),	sub { $settings->Add(); } );
+
+	$menu->AppendSeparator();
+	EVT_MENU( $settings, $menu->Append(-1, "Load columns layout", 'Load a column layout from a file' ), sub { $settings->LoadColumnLayout(); } );
+	EVT_MENU( $settings, $menu->Append(-1, "Save columns layout", 'Save a column layout to a file' ), sub { $settings->SaveColumnLayout(); } );
 
 	$settings->PopupMenu( $menu, wxDefaultPosition ); # alt: $event->GetPosition
 }

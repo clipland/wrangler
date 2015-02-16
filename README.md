@@ -76,7 +76,7 @@ Clipland GmbH, [clipland.com](http://www.clipland.com/)
 
 ## COPYRIGHT
 
-Copyright 2009-2014 Clipland GmbH. All rights reserved.
+Copyright 2009-2015 Clipland GmbH. All rights reserved.
 
 ## LICENSE
 
@@ -88,7 +88,7 @@ to buy commercial licenses.
 Please note that Wrangler's license keeps it from being [officially "open source" software](http://opensource.org/faq#avoid-unapproved-licenses).
 Nor is it GNU "free software", as it permits only one (freedom 2) of the [four freedoms](http://www.gnu.org/philosophy/free-sw.html).
 
-Wrangler falls into Debian's non-free software category, as the Wrangler Licenses
+Wrangler belongs to Debian's non-free software category, as the Wrangler Licenses
 do not allow derived works, which would be rule 3 of the [Debian Free Software Guidelines (DFSG)](https://www.debian.org/doc/debian-policy/ch-archive.html).
 
 Wrangler relies on a number of Perl modules and the WxWidgets toolkit. If you are
